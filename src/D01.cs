@@ -1,11 +1,11 @@
-namespace src
+namespace src01
 {
   using System;
   using System.Collections.Generic;
   using System.Linq;
   using System.Reactive.Linq;
 
-  public static class D01
+  public static class Code
   {
     public static int FuelForMass(int mass) => mass/3 - 2;
     public static int TotalFuelForMass(int mass) 

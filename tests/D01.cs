@@ -1,9 +1,9 @@
-namespace tests
+namespace tests01
 {
     using NUnit.Framework;
     using NFluent;
     using System.IO;
-    using src;
+    using src01;
 
     public class Tests
     {
@@ -13,14 +13,14 @@ namespace tests
         [TestCase(100756, 33583)]
         public void GetFuelForMass(int givenMass, int expectedFuel)
         {
-            Check.That(D01.FuelForMass(givenMass)).IsEqualTo(expectedFuel);
+            Check.That(Code.FuelForMass(givenMass)).IsEqualTo(expectedFuel);
         }
         
         [Test]
         public void GetSumOfFuelForMasses()
         {
             Check.That(
-                new string[] {"12", "14", "1969"}.SumOf(D01.FuelForMass)
+                new string[] {"12", "14", "1969"}.SumOf(Code.FuelForMass)
             ).IsEqualTo(658);
         }
         
@@ -28,7 +28,7 @@ namespace tests
         public void Part1()
         {
             Check.That(
-                File.ReadAllLines("D01.txt").SumOf(D01.FuelForMass)
+                File.ReadAllLines("D01.txt").SumOf(Code.FuelForMass)
             ).IsEqualTo(3401852);
         }
 
@@ -38,14 +38,14 @@ namespace tests
         [TestCase(100756, 50346)]
         public void GetTotalFuelForMass(int givenMass, int expectedFuel)
         {
-            Check.That(D01.TotalFuelForMass(givenMass)).IsEqualTo(expectedFuel);
+            Check.That(Code.TotalFuelForMass(givenMass)).IsEqualTo(expectedFuel);
         }
         
         [Test]
         public void GetSumOfTotalFuelForMasses()
         {
             Check.That(
-                new string[] {"12", "14", "1969"}.SumOf(D01.TotalFuelForMass)
+                new string[] {"12", "14", "1969"}.SumOf(Code.TotalFuelForMass)
             ).IsEqualTo(970);
         }
         
@@ -53,7 +53,7 @@ namespace tests
         public void Part2()
         {
             Check.That(
-                File.ReadAllLines("D01.txt").SumOf(D01.TotalFuelForMass)
+                File.ReadAllLines("D01.txt").SumOf(Code.TotalFuelForMass)
             ).IsEqualTo(5099916);
         }
     }
