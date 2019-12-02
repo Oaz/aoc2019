@@ -44,11 +44,33 @@ namespace tests02
         [Test]
         public void Part1()
         {
-            var input = File.ReadAllText("D02.txt").Split(',').Select(n => int.Parse(n)).ToArray();
-            input[1] = 12;
-            input[2] = 2;
-            Check.That(input.Run()[0]).IsEqualTo(3931283);
+            Check.That(MyProgram.RunWithInputs(12,2)[0]).IsEqualTo(3931283);
         }
 
+        [Test]
+        public void RunWithInputsDoesNotChangeTheInitialProgram()
+        {
+            var program = new int[] {1,0,0,0,99,7,8,9};
+            Check.That(program.RunWithInputs(5,6)).ContainsExactly(new int[] {15,5,6,0,99,7,8,9});
+            Check.That(program.RunWithInputs(6,7)).ContainsExactly(new int[] {17,6,7,0,99,7,8,9});
+            Check.That(program).ContainsExactly(new int[] {1,0,0,0,99,7,8,9});
+        }
+
+        [TestCase(15,506)]
+        [TestCase(17,607)]
+        public void FindInputs(int outputToFind, int expectedInput)
+        {
+            Check.That(new int[] {1,0,0,0,99,7,8,9}.FindInputsFor(outputToFind)).IsEqualTo(expectedInput);
+        }
+        
+        [Test]
+        public void Part2()
+        {
+            Check.That(MyProgram.FindInputsFor(19690720)).IsEqualTo(6979);
+        }
+
+        public int[] MyProgram {
+            get => File.ReadAllText("D02.txt").Split(',').Select(n => int.Parse(n)).ToArray();
+        }
     }
 }
