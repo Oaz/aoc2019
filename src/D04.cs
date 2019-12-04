@@ -32,12 +32,6 @@ namespace src04
           .Select(size => size+1)
           .Reverse();
 
-    public static IList<T> ChangeHead<T>(this IList<T> l, Func<T,T> f)
-    {
-      l[0] = f(l[0]);
-      return l;
-    }
-
     public static bool HasAcceptableGroupSizes(string s) => SizesOfIdenticalGroups(s).Contains(2);
 
     public static bool IsReallyGoodPassword(string s)
