@@ -7,7 +7,6 @@ namespace src03
   public readonly struct Coords
   {
     public static Coords At(int x, int y) => new Coords(x,y);
-
     public Coords(int x, int y) { X=x; Y=y; }
     public readonly int X;
     public readonly int Y;
