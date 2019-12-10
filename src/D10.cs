@@ -7,18 +7,15 @@ namespace src10
 
   public class Space
   {
-    public Space(IEnumerable<string> lines)
-    {
-      asteroids = lines.SelectMany((l,y) => 
-        l.SelectMany((c,x) =>
-          (c=='#')? new Coords[]{Coords.At(x,y)}:new Coords[]{})
-      ).ToList();
-      XMax = asteroids.Select(a => a.X).Max();
-      YMax = asteroids.Select(a => a.Y).Max();
-    }
+    public Space(IEnumerable<string> lines) :this(Read(lines)) {}
+
+    private static IEnumerable<Coords> Read(IEnumerable<string> lines) =>
+      lines.SelectMany((l,y) => 
+        l.SelectMany((c,x) => (c=='#')? new Coords[]{Coords.At(x,y)}:new Coords[]{})
+      );
     public Space(IEnumerable<Coords> a)
     {
-      asteroids = a.ToList();
+      asteroids = new HashSet<Coords>(a);
       XMax = asteroids.Select(a => a.X).Max();
       YMax = asteroids.Select(a => a.Y).Max();
     }
@@ -47,28 +44,28 @@ namespace src10
     }
     static int GCD(int a, int b) => b == 0 ? a : GCD(b, a % b);
 
-    public bool IsVisible(Coords from, Coords to)
-    {
-      var sv = SightVector(from,to);
-      var los = LineOfSight(from,sv.X,sv.Y).ToList();
-      var ailos = los.Intersect(asteroids).ToList();
-      var filos = ailos.First();
-      return filos.Equals(to);
-    }
+    public IEnumerable<Coords> FindVisible(Coords origin,Coords direction) =>
+      LineOfSight(origin,direction.X,direction.Y).Where(a => asteroids.Contains(a));
     
-    public int NumberOfVisibleFrom(Coords origin)
-    {
-      return asteroids.Where(a => !a.Equals(origin) && IsVisible(origin,a)).Count();
-    }    
     public (Coords,int) Best()
     {
       var r = from a in asteroids
-              let v = NumberOfVisibleFrom(a)
+              let v = VisibleFrom(a).Count()
               orderby v descending
               select (a,v);
       return r.First();
     }
     
+    public IEnumerable<Coords> VisibleFrom(Coords origin)
+    {
+      var sightVectors =  SightVectorRotatingFrom(origin).ToList();
+        foreach (var sv in sightVectors)
+        {
+          var candidates = FindVisible(origin,sv);
+          if(candidates.Any())
+            yield return candidates.First();
+        }
+    }    
     public IEnumerable<Coords> KillsFrom(Coords origin)
     {
       var sightVectors =  SightVectorRotatingFrom(origin).ToList();
@@ -77,7 +74,7 @@ namespace src10
       {
         foreach (var sv in sightVectors)
         {
-          var candidates = remaining.LineOfSight(origin,sv.X,sv.Y).Intersect(remaining.asteroids);
+          var candidates = remaining.FindVisible(origin,sv);
           if(candidates.Any())
           {
             var killed = candidates.First();
@@ -100,7 +97,7 @@ namespace src10
                 select v;
       return all.Distinct();
     }
-    IList<Coords> asteroids;
+    HashSet<Coords> asteroids;
   }
 
   public readonly struct Coords
@@ -111,6 +108,5 @@ namespace src10
     public readonly int Y;
 
     public override string ToString() => $"({X},{Y})";
-    public int DistanceToOrigin => Math.Abs(X)+Math.Abs(Y);
   }
 }
