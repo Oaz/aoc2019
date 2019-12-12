@@ -64,6 +64,20 @@ namespace src12
       Enumerable.Range(0,steps).Aggregate(this, (u,i) => u.Step());
 
     public int TotalEnergy => Moons.Select(m => m.TotalEnergy).Sum();
+
+    public Projection ProjectionX => new Projection(Moons,c => c.X);
+    public Projection ProjectionY => new Projection(Moons,c => c.Y);
+    public Projection ProjectionZ => new Projection(Moons,c => c.Z);
+    public long NumberOfStepsUntilSame =>
+      LCM(ProjectionX.NumberOfStepsUntilSame(),
+        LCM(ProjectionY.NumberOfStepsUntilSame(),ProjectionZ.NumberOfStepsUntilSame()));
+
+    static long LCM(long a,long b)
+    {
+      var p=a*b;
+      while (b!=0) (a,b)=(b,a%b);
+      return p/a;
+    }
   }
   public readonly struct Coords3
   {
@@ -89,7 +103,42 @@ namespace src12
       Coords3.At(f(l.Select(c => c.X)), f(l.Select(c => c.Y)), f(l.Select(c => c.Z)));
     public static Coords3 Min(this IEnumerable<Coords3> l) => l.Bulk(x => x.Min());
     public static Coords3 Max(this IEnumerable<Coords3> l) => l.Bulk(x => x.Max());
-
-
   }
+
+  public readonly struct Projection
+  {
+    public Projection(IEnumerable<Moon> moons, Func<Coords3,int> p) =>
+      values = moons.Select(m => (p(m.Position),p(m.Velocity))).ToArray();   
+    public Projection((int,int)[] v) => values = v;   
+    private readonly (int,int)[] values;
+    public Projection Step()
+    {
+      var v=values.ToArray();
+      for (int i = 0; i < v.Length; i++)
+      {
+        for (int j = i + 1; j < v.Length; j++)
+        {
+          var g = Math.Sign(v[i].Item1-v[j].Item1);
+          v[i].Item2 -= g;
+          v[j].Item2 += g;
+        }
+      }
+      var newValues = v.Select(p => (p.Item1+p.Item2,p.Item2)).ToArray();
+      return new Projection(newValues);
+    }
+    public int NumberOfStepsUntilSame()
+    {
+      var i = 1;
+      var now = this;
+      for(;;)
+      {
+        var next = now.Step();
+        if(next.values.Zip(values).All(v => v.First == v.Second))
+          return i;
+        i++;
+        now = next;
+      }
+    }
+  }
+
 }

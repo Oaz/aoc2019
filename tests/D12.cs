@@ -55,5 +55,30 @@ namespace tests12
       "<x=2, y=-7, z=3>",
       "<x=9, y=-8, z=-3>"
       };
+
+    [Test]
+    public void FindExample1()
+    {
+      var u = new Universe(example1);
+      Check.That(u.ProjectionX.NumberOfStepsUntilSame()).IsEqualTo(18);
+      Check.That(u.ProjectionY.NumberOfStepsUntilSame()).IsEqualTo(28);
+      Check.That(u.ProjectionZ.NumberOfStepsUntilSame()).IsEqualTo(44);
+      Check.That(u.NumberOfStepsUntilSame).IsEqualTo(2772);
+    }
+
+    [Test]
+    public void FindExample2()
+    {
+      var u = new Universe(example2);
+      Check.That(u.ProjectionX.NumberOfStepsUntilSame()).IsEqualTo(2028);
+      Check.That(u.ProjectionY.NumberOfStepsUntilSame()).IsEqualTo(5898);
+      Check.That(u.ProjectionZ.NumberOfStepsUntilSame()).IsEqualTo(4702);
+      Check.That(u.NumberOfStepsUntilSame).IsEqualTo(4686774924);
+    }
+
+    [Test]
+    public void Part2() =>
+      Check.That(new Universe(MySystem).NumberOfStepsUntilSame).IsEqualTo(518311327635164);
+
   }
 }
