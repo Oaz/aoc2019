@@ -5,7 +5,30 @@ namespace src17
   using System.Collections.Generic;
   using System.Linq;
   using System.Reactive.Linq;
-  using Heuristic.Linq;
+
+  public class Robot : AbstractIntcodeComputer
+  {
+    public Robot(BigInteger[] program, string orders) : base(program)
+    {
+      RemainingOrders = orders;
+      Program[0] = 2;
+      Run();
+    }
+
+    public string RemainingOrders;
+    public long Result;
+
+    public override BigInteger ReadFromInput()
+    {
+      var input = RemainingOrders.First();
+      RemainingOrders = RemainingOrders.Substring(1);
+      return input;
+    }
+    public override void WriteToOutput(BigInteger val)
+    {
+      Result = (long)val;
+    }
+  }
 
   public class Camera
   {
@@ -22,13 +45,42 @@ namespace src17
 
     public readonly int Width;
     public readonly int Height;
-    public readonly Dictionary<Coords,char> Points;
+    public readonly Dictionary<Coords, char> Points;
 
+    public IEnumerable<string> TextPath =>
+      Path.Zip(Path.Skip(1))
+        .SelectMany(p => Operations(p.Item1, p.Item2))
+        .ToList().Prepend("R").Take(2 * Path.Count() - 2);
+    public IEnumerable<string> Operations(Moving begin, Moving end) =>
+      new string[] {
+        (end.Position-begin.Position).ManhattanDistance.ToString(),
+        (begin.RotationTo(end) == Moving.Rotation.Right ? "R" : "L").ToString(),
+      };
+    public IEnumerable<Moving> Path =>
+      LinqX.Generate(Start, Segment)
+        .Zip(LinqX.Generate(Start, Segment).Skip(1))
+        .TakeWhile(p => !p.Item1.Position.Equals(p.Item2.Position))
+        .Select(p => p.Item2)
+        .ToList().Prepend(Start);
+    public Moving Segment(Moving start) => RotateOnDeadEnd(GoToEndOfSegment(start));
+    public Moving RotateOnDeadEnd(Moving m) => m.Rotate(SelectRotationOnDeadEnd(m));
+    public Moving.Rotation SelectRotationOnDeadEnd(Moving m) =>
+      CanRotate(m, Moving.Rotation.Left) ? Moving.Rotation.Left : Moving.Rotation.Right;
+    public bool CanRotate(Moving m, Moving.Rotation r) =>
+      IsScaffolding(m.Rotate(r).Next.Position);
+    public Moving GoToEndOfSegment(Moving start) =>
+      LinqX.Generate(start, m => m.Next)
+           .TakeWhile(m => IsScaffolding(m.Position))
+           .Last();
+    public Moving Start =>
+      new Moving(Points.First(p => p.Value == '^').Key, Coords.At(1, 0));
     public int Alignment => Intersections.Select(p => p.X * p.Y).Sum();
     public IEnumerable<Coords> Intersections => Points.Keys.Where(p => IsIntersection(p));
     public bool IsIntersection(Coords c) =>
-      Points[c] == '#' && Neighbors(c).Count() == 4 && Neighbors(c).All(n => Points[n]=='#');
-    public IEnumerable<Coords> Neighbors(Coords c) => Deltas.Select(d => c+d).Where(p => Points.ContainsKey(p));
+      IsScaffolding(c) && Neighbors(c).Count() == 4 && Neighbors(c).All(IsScaffolding);
+    public IEnumerable<Coords> Neighbors(Coords c) => Deltas.Select(d => c + d).Where(IsInside);
+    public bool IsInside(Coords c) => Points.ContainsKey(c);
+    public bool IsScaffolding(Coords c) => IsInside(c) && Points[c] != '.';
     static Coords[] Deltas = new Coords[] { Coords.At(0, 1), Coords.At(0, -1), Coords.At(1, 0), Coords.At(-1, 0) };
   }
 
@@ -43,6 +95,27 @@ namespace src17
     {
       Image += (char)val;
     }
+  }
+
+  public readonly struct Moving
+  {
+    public Moving(Coords position, Coords direction)
+    {
+      Position = position;
+      Direction = direction;
+    }
+    public override string ToString() => $"[{Position} {Direction}]";
+    public enum Rotation { Left, Right }
+    public readonly Coords Position;
+    public readonly Coords Direction;
+    public Moving Next => new Moving(Position + Direction, Direction);
+    public Moving Rotate(Rotation r) => new Moving(Position,
+      r == Rotation.Left ? Coords.At(Direction.Y, -Direction.X) : Coords.At(-Direction.Y, Direction.X)
+    );
+
+    public Rotation RotationTo(Moving next) =>
+      (Direction.X * next.Direction.Y - Direction.Y * next.Direction.X == 1)
+        ? Rotation.Right : Rotation.Left;
   }
 
   public readonly struct Coords
@@ -201,10 +274,17 @@ namespace src17
     public int Length => 3;
   }
 
-  public static class ExtensionsHelper
+  public static class LinqX
   {
     public static IEnumerable<BigInteger> AsBig(this IEnumerable<int> l) =>
       l.Select(i => new BigInteger(i));
     public static BigInteger AsBig(this int i) => new BigInteger(i);
+    public static T Identity<T>(T x) => x;
+    public static IEnumerable<T> Generate<T>(T x, Func<T, T> f)
+    {
+      for (; ; ) { yield return x; x = f(x); }
+    }
+    public static IEnumerable<T> RepeatInfinitely<T>(this IEnumerable<T> l) =>
+      Generate(l, Identity).SelectMany(Identity);
   }
 }
