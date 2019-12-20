@@ -78,6 +78,15 @@ FG..#########.....#
       var maze = new DonutMaze(example1);
       Check.That(maze.ShortestGlobalPath()).IsEqualTo(23);
     }
+
+    [Test]
+    public void Example1RecursivePath()
+    {
+      var maze = new RecursiveMaze(example1,2);
+      Check.That(maze.Nodes.Count).IsEqualTo(14);
+      Check.That(maze.ShortestGlobalPath()).IsEqualTo(26);
+    }
+
     string example2 = @"
                    A               
                    A               
@@ -132,5 +141,59 @@ YN......#               VT..#....QG
       Check.That(maze.Size).IsEqualTo(Coords.At(113,121));
       Check.That(maze.ShortestGlobalPath()).IsEqualTo(588);
     }
+
+    string example3 = @"
+             Z L X W       C                 
+             Z P Q B       K                 
+  ###########.#.#.#.#######.###############  
+  #...#.......#.#.......#.#.......#.#.#...#  
+  ###.#.#.#.#.#.#.#.###.#.#.#######.#.#.###  
+  #.#...#.#.#...#.#.#...#...#...#.#.......#  
+  #.###.#######.###.###.#.###.###.#.#######  
+  #...#.......#.#...#...#.............#...#  
+  #.#########.#######.#.#######.#######.###  
+  #...#.#    F       R I       Z    #.#.#.#  
+  #.###.#    D       E C       H    #.#.#.#  
+  #.#...#                           #...#.#  
+  #.###.#                           #.###.#  
+  #.#....OA                       WB..#.#..ZH
+  #.###.#                           #.#.#.#  
+CJ......#                           #.....#  
+  #######                           #######  
+  #.#....CK                         #......IC
+  #.###.#                           #.###.#  
+  #.....#                           #...#.#  
+  ###.###                           #.#.#.#  
+XF....#.#                         RF..#.#.#  
+  #####.#                           #######  
+  #......CJ                       NM..#...#  
+  ###.#.#                           #.###.#  
+RE....#.#                           #......RF
+  ###.###        X   X       L      #.#.#.#  
+  #.....#        F   Q       P      #.#.#.#  
+  ###.###########.###.#######.#########.###  
+  #.....#...#.....#.......#...#.....#.#...#  
+  #####.#.###.#######.#######.###.###.#.#.#  
+  #.......#.......#.#.#.#.#...#...#...#.#.#  
+  #####.###.#####.#.#.#.#.###.###.#.###.###  
+  #.......#.....#.#...#...............#...#  
+  #############.#.#.###.###################  
+               A O F   N                     
+               A A D   M                     ";
+
+    [Test]
+    public void Example3RecursiveShortestGlobalPath()
+    {
+      var maze = new RecursiveMaze(example3, 11);
+      Check.That(maze.ShortestGlobalPath()).IsEqualTo(396);
+    }
+
+    [Test]
+    public void Part2()
+    {
+      var maze = new RecursiveMaze(File.ReadAllText("D20.txt"),26);
+      Check.That(maze.ShortestGlobalPath()).IsEqualTo(6834);
+    }
+
   }
 }
