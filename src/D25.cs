@@ -194,7 +194,7 @@ namespace src25
   {
     public AbstractIntcodeComputer(IEnumerable<T> program, Func<T, int> intify, Func<int, T> untify, Func<T, T, T> add, Func<T, T, T> mul)
     {
-      Program = program.ToList();
+      Program = new Dictionary<int, T>(program.Select((v,i) => KeyValuePair.Create(i,v)));
       I = intify;
       var zero = untify(0);
       var one = untify(1);
@@ -212,19 +212,11 @@ namespace src25
       };
     }
     protected AbstractIntcodeComputer() { }
-    public T ReadAt(int index) =>
-      ResizeToIncludeAnd(index, () => Program[index]);
-    public T WriteAt(int index, T val) =>
-      ResizeToIncludeAnd(index, () => Program[index] = val);
-    private T ResizeToIncludeAnd(int index, Func<T> f)
-    {
-      if (Program.Count - 1 < index)
-        Program.AddRange(new T[index + 1 - Program.Count]);
-      return f();
-    }
+    public T ReadAt(int index) => Program.TryGetValue(index, out T v) ? v : default;
+    public T WriteAt(int index, T val) => Program[index] = val;
 
     public Func<T, int> I;
-    public List<T> Program;
+    public Dictionary<int,T> Program;
     public int Counter = 0;
     public int RelativeBase = 0;
     public Dictionary<int, Operation<T>> Operations;
@@ -232,7 +224,7 @@ namespace src25
     protected void CopyTo(AbstractIntcodeComputer<T> dst)
     {
       dst.I = I;
-      dst.Program = Program.ToList();
+      dst.Program = new Dictionary<int, T>(Program);
       dst.Counter = Counter;
       dst.RelativeBase = RelativeBase;
       dst.Operations = Operations;
@@ -325,10 +317,11 @@ namespace src25
       l.Select(i => new BigInteger(i));
     public static IEnumerable<int> AsInt(this IEnumerable<BigInteger> l) =>
       l.Select(i => (int)i);
+    public static IEnumerable<int> AsInt(this IDictionary<int,BigInteger> l) =>
+      l.Select(i => (int)i.Value);
     public static BigInteger AsBig(this int i) => new BigInteger(i);
     public static int AsInt(this BigInteger i) => (int)i;
   }
-
   public static class LinqX
   {
     public static T Identity<T>(T x) => x;
