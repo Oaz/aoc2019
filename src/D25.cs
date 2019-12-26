@@ -8,15 +8,15 @@ namespace src25
   using System.Text;
   using System.Text.RegularExpressions;
 
-  public class Explorer : AbstractIntcodeComputer
+  public class Explorer : AbstractIntcodeComputerForLong
   {
-    public static Status Try(IEnumerable<BigInteger> program, string actions) =>
+    public static Status Try(string program, string actions) =>
       new Explorer(program).Execute(actions);
 
-    public Explorer(IEnumerable<BigInteger> program)
+    public Explorer(string program)
       : base(program)
     {
-      AsciiIn = new Queue<BigInteger>();
+      AsciiIn = new Queue<long>();
       Actions = new Queue<string>();
       Output = new StringBuilder();
     }
@@ -32,12 +32,12 @@ namespace src25
       return CurrentStatus;
     }
 
-    public Queue<BigInteger> AsciiIn;
+    public Queue<long> AsciiIn;
     public Queue<string> Actions;
     public StringBuilder Output;
     public Status CurrentStatus;
 
-    public override BigInteger ReadFromInput()
+    public override long ReadFromInput()
     {
       if(AsciiIn.Count>0)
         return AsciiIn.Dequeue();
@@ -61,7 +61,7 @@ namespace src25
         default: return string.Empty;
       }
     }
-    public override void WriteToOutput(BigInteger val)
+    public override void WriteToOutput(long val)
     {
       Output.Append((char)val);
       if(Output.Length > 10000)
@@ -128,9 +128,9 @@ namespace src25
     static Regex defaultPattern = new Regex("(.+)\\n\\nCommand");
   }
 
-  public class ASCIIComputer : AbstractIntcodeComputer
+  public class ASCIIComputer : AbstractIntcodeComputerForLong
   {
-    public ASCIIComputer(IEnumerable<BigInteger> program, IEnumerable<char> input, Action<char> output)
+    public ASCIIComputer(string program, IEnumerable<char> input, Action<char> output)
       : base(program)
     {
       Input = input.GetEnumerator();
@@ -140,12 +140,12 @@ namespace src25
     IEnumerator<char> Input;
     Action<char> Output;
 
-    public override BigInteger ReadFromInput() => Input.MoveNext() ? Input.Current : Input.Current;
-    public override void WriteToOutput(BigInteger val) => Output((char)val);
+    public override long ReadFromInput() => Input.MoveNext() ? Input.Current : Input.Current;
+    public override void WriteToOutput(long val) => Output((char)val);
   }
-  public class LinuxASCIIComputer : AbstractIntcodeComputer
+  public class LinuxASCIIComputer : AbstractIntcodeComputerForLong
   {
-    public LinuxASCIIComputer(IEnumerable<BigInteger> program, Stream asciiIn, Stream asciiOut)
+    public LinuxASCIIComputer(string program, Stream asciiIn, Stream asciiOut)
       : base(program)
     {
       AsciiIn = asciiIn;
@@ -155,145 +155,168 @@ namespace src25
     Stream AsciiIn;
     Stream AsciiOut;
 
-    public override BigInteger ReadFromInput() => AsciiIn.ReadByte();
-    public override void WriteToOutput(BigInteger val) => AsciiOut.WriteByte((byte)val);
+    public override long ReadFromInput() => AsciiIn.ReadByte();
+    public override void WriteToOutput(long val) => AsciiOut.WriteByte((byte)val);
   }
 
-  public class IntcodeProgram
+
+  public class IntcodeComputer : AbstractIntcodeComputerForBigInteger
   {
-    public static IEnumerable<BigInteger> Load(string s) =>
-      s.Split(',').Select(n => BigInteger.Parse(n)).ToArray();
+    public IntcodeComputer(int[] program) : this(program.AsBig()) { }
+    public IntcodeComputer(IEnumerable<BigInteger> program) : base(program) { }
+
+    public override BigInteger ReadFromInput() => Input.Dequeue();
+    public override void WriteToOutput(BigInteger val) => Output.Enqueue(val);
+    public Queue<BigInteger> Input = new Queue<BigInteger>();
+    public Queue<BigInteger> Output = new Queue<BigInteger>();
   }
 
-  public abstract class AbstractIntcodeComputer
+
+  public abstract class AbstractIntcodeComputerForBigInteger : AbstractIntcodeComputer<BigInteger>
   {
-    public AbstractIntcodeComputer(IEnumerable<BigInteger> program) =>
+    public AbstractIntcodeComputerForBigInteger(string p) : this(IntcodeProgram<BigInteger>.Load(p,BigInteger.Parse)) {}
+    public AbstractIntcodeComputerForBigInteger(IEnumerable<BigInteger> program) : base(program, bi => (int)bi, i => i, (a, b) => a + b, (a, b) => a * b) { }
+  }
+
+  public abstract class AbstractIntcodeComputerForLong : AbstractIntcodeComputer<long>
+  {
+    public AbstractIntcodeComputerForLong(string p) : this(IntcodeProgram<long>.Load(p, long.Parse)) { }
+    public AbstractIntcodeComputerForLong(IEnumerable<long> program) : base(program, bi => (int)bi, i => i, (a, b) => a + b, (a, b) => a * b) { }
+  }
+
+
+  public class IntcodeProgram<T>
+  {
+    public static IEnumerable<T> Load(string s, Func<string,T> parse) => s.Split(',').Select(n => parse(n)).ToArray();
+  }
+
+  public abstract class AbstractIntcodeComputer<T> where T : IComparable<T>, IEquatable<T>
+  {
+    public AbstractIntcodeComputer(IEnumerable<T> program, Func<T, int> intify, Func<int, T> untify, Func<T, T, T> add, Func<T, T, T> mul)
+    {
       Program = program.ToList();
+      I = intify;
+      var zero = untify(0);
+      var one = untify(1);
+      Operations = new Dictionary<int, Operation<T>>
+      {
+        { 1, new OperationBinary<T>((a,b) => add(a,b)) },
+        { 2, new OperationBinary<T>((a,b) => mul(a,b)) },
+        { 3, new OperationInput<T>() },
+        { 4, new OperationOutput<T>() },
+        { 5, new OperationJumpIf<T>(true) },
+        { 6, new OperationJumpIf<T>(false) },
+        { 7, new OperationBinary<T>((a,b) => a.CompareTo(b)<0 ? one:zero) },
+        { 8, new OperationBinary<T>((a,b) => a.Equals(b) ? one:zero) },
+        { 9, new OperationChangeRelativeBase<T>() }
+      };
+    }
     protected AbstractIntcodeComputer() { }
-    public BigInteger ReadAt(BigInteger index) =>
-      ResizeToIncludeAnd((int)index, () => Program[(int)index]);
-    public BigInteger WriteAt(BigInteger index, BigInteger val) =>
-      ResizeToIncludeAnd((int)index, () => Program[(int)index] = val);
-    private BigInteger ResizeToIncludeAnd(int index, Func<BigInteger> f)
+    public T ReadAt(int index) =>
+      ResizeToIncludeAnd(index, () => Program[index]);
+    public T WriteAt(int index, T val) =>
+      ResizeToIncludeAnd(index, () => Program[index] = val);
+    private T ResizeToIncludeAnd(int index, Func<T> f)
     {
       if (Program.Count - 1 < index)
-        Program.AddRange(new BigInteger[index + 1 - Program.Count]);
+        Program.AddRange(new T[index + 1 - Program.Count]);
       return f();
     }
 
-    public List<BigInteger> Program;
+    public Func<T, int> I;
+    public List<T> Program;
     public int Counter = 0;
     public int RelativeBase = 0;
+    public Dictionary<int, Operation<T>> Operations;
 
-    protected void CopyTo(AbstractIntcodeComputer dst)
+    protected void CopyTo(AbstractIntcodeComputer<T> dst)
     {
+      dst.I = I;
       dst.Program = Program.ToList();
       dst.Counter = Counter;
       dst.RelativeBase = RelativeBase;
+      dst.Operations = Operations;
     }
 
-    public abstract BigInteger ReadFromInput();
-    public abstract void WriteToOutput(BigInteger val);
-    public static Dictionary<int, Operation> Operations = new Dictionary<int, Operation>
-      {
-        { 1, new OperationBinary((a,b) => a+b) },
-        { 2, new OperationBinary((a,b) => a*b) },
-        { 3, new OperationInput() },
-        { 4, new OperationOutput() },
-        { 5, new OperationJumpIf(true) },
-        { 6, new OperationJumpIf(false) },
-        { 7, new OperationBinary((a,b) => a<b ? 1 : 0) },
-        { 8, new OperationBinary((a,b) => a==b ? 1 : 0) },
-        { 9, new OperationChangeRelativeBase() }
-      };
+    public abstract T ReadFromInput();
+    public abstract void WriteToOutput(T val);
 
-    public AbstractIntcodeComputer Run()
+    public AbstractIntcodeComputer<T> Run()
     {
       Counter = 0;
       while (!HasHalted)
         RunOne();
       return this;
     }
-    public bool HasHalted => Program[Counter] == 99;
-    public AbstractIntcodeComputer MoveTo(int index)
+    public bool HasHalted => I(Program[Counter]) == 99;
+    public AbstractIntcodeComputer<T> MoveTo(int index)
     {
       Counter = index;
       return this;
     }
-    public AbstractIntcodeComputer RunOne()
+    public AbstractIntcodeComputer<T> RunOne()
     {
-      var opcode = (int)Program[Counter];
+      var opcode = I(Program[Counter]);
       var operation = Operations[opcode % 100];
       var modes = new int[] { (opcode / 100) % 10, (opcode / 1000) % 10, (opcode / 10000) % 10 };
       var args = Enumerable
                   .Range(Counter + 1, operation.Length - 1)
                   .Zip(modes).Select(ChooseMode).ToArray();
       operation.Execute(this, args);
-      if (Program[Counter] == opcode)
+      if (I(Program[Counter]) == opcode)
         Counter += operation.Length;
       return this;
     }
-    private BigInteger ChooseMode((int, int) x) =>
-      x.Item2 == 1 ? x.Item1 : Program[x.Item1] + (x.Item2 == 0 ? 0 : RelativeBase);
+    private int ChooseMode((int, int) x) =>
+      x.Item2 == 1 ? x.Item1 : I(Program[x.Item1]) + (x.Item2 == 0 ? 0 : RelativeBase);
   }
 
-  public interface Operation
+  public interface Operation<T> where T : IComparable<T>, IEquatable<T>
   {
-    void Execute(AbstractIntcodeComputer computer, BigInteger[] args);
+    void Execute(AbstractIntcodeComputer<T> computer, int[] args);
     int Length { get; }
   }
 
-  public class OperationBinary : Operation
+  public class OperationBinary<T> : Operation<T> where T : IComparable<T>, IEquatable<T>
   {
-    public OperationBinary(Func<BigInteger, BigInteger, BigInteger> o) { op = o; }
-    readonly Func<BigInteger, BigInteger, BigInteger> op;
-    public void Execute(AbstractIntcodeComputer computer, BigInteger[] args)
+    public OperationBinary(Func<T, T, T> o) { op = o; }
+    readonly Func<T, T, T> op;
+    public void Execute(AbstractIntcodeComputer<T> computer, int[] args)
       => computer.WriteAt(args[2], op(computer.ReadAt(args[0]), computer.ReadAt(args[1])));
     public int Length => 4;
   }
 
-  public class OperationInput : Operation
+  public class OperationInput<T> : Operation<T> where T : IComparable<T>, IEquatable<T>
   {
-    public void Execute(AbstractIntcodeComputer computer, BigInteger[] args) =>
+    public void Execute(AbstractIntcodeComputer<T> computer, int[] args) =>
       computer.WriteAt(args[0], computer.ReadFromInput());
     public int Length => 2;
   }
 
-  public class OperationOutput : Operation
+  public class OperationOutput<T> : Operation<T> where T : IComparable<T>, IEquatable<T>
   {
-    public void Execute(AbstractIntcodeComputer computer, BigInteger[] args) =>
+    public void Execute(AbstractIntcodeComputer<T> computer, int[] args) =>
       computer.WriteToOutput(computer.ReadAt(args[0]));
     public int Length => 2;
   }
 
-  public class OperationChangeRelativeBase : Operation
+  public class OperationChangeRelativeBase<T> : Operation<T> where T : IComparable<T>, IEquatable<T>
   {
-    public void Execute(AbstractIntcodeComputer computer, BigInteger[] args) =>
-      computer.RelativeBase += (int)computer.ReadAt(args[0]);
+    public void Execute(AbstractIntcodeComputer<T> computer, int[] args) =>
+      computer.RelativeBase += computer.I(computer.ReadAt(args[0]));
     public int Length => 2;
   }
 
-  public class OperationJumpIf : Operation
+  public class OperationJumpIf<T> : Operation<T> where T : IComparable<T>, IEquatable<T>
   {
     public OperationJumpIf(bool c) { condition = c; }
     readonly bool condition;
-    public void Execute(AbstractIntcodeComputer computer, BigInteger[] args)
+    public void Execute(AbstractIntcodeComputer<T> computer, int[] args)
     {
-      if ((computer.ReadAt(args[0]) == 0) != condition)
-        computer.Counter = (int)computer.ReadAt(args[1]);
+      if ((computer.I(computer.ReadAt(args[0])) == 0) != condition)
+        computer.Counter = computer.I(computer.ReadAt(args[1]));
     }
     public int Length => 3;
-  }
-
-  public class IntcodeComputer : AbstractIntcodeComputer
-  {
-    public IntcodeComputer(int[] program) : base(program.AsBig()) { }
-    public IntcodeComputer(BigInteger[] program) : base(program) { }
-
-    public override BigInteger ReadFromInput() => Input.Dequeue();
-    public override void WriteToOutput(BigInteger val) => Output.Enqueue(val);
-    public Queue<BigInteger> Input = new Queue<BigInteger>();
-    public Queue<BigInteger> Output = new Queue<BigInteger>();
   }
 
   public static class ExtensionsHelper

@@ -113,8 +113,7 @@ namespace tests25
       Check.That(status.Description).IsEqualTo(expected);
     }
 
-    public IEnumerable<BigInteger> MyProgram =>
-      IntcodeProgram.Load(File.ReadAllText("D25.txt"));
+    public string MyProgram => File.ReadAllText("D25.txt");
 
     public TextWriter LocalTestConsole => new StreamWriter(System.Console.OpenStandardOutput());
   }
