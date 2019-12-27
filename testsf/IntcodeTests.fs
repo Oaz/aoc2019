@@ -23,7 +23,7 @@ type IntcodeTests() =
 
     [<Test>]
     member this.RunProgramUntilHalt() =
-        Check.That(exampleProgram |> RunToHalt |> MemoryDump)
+        Check.That(exampleProgram |> Run |> MemoryDump)
             .ContainsExactly([3500;9;10;70;2;3;11;0;99;30;40;50])
             |> ignore
 
@@ -32,29 +32,29 @@ type IntcodeTests() =
     [<TestCase("2,4,4,5,99,0","2,4,4,5,99,9801")>]
     [<TestCase("1,1,1,4,99,5,6,0,99","30,1,1,4,2,5,6,0,99")>]
     member this.RunSomeOtherPrograms(input,expectedOutput) =
-        Check.That(LoadIntProgram input |> RunToHalt |> MemoryDump)
+        Check.That(LoadIntProgram input |> Run |> MemoryDump)
             .ContainsExactly(LoadIntProgram expectedOutput |> MemoryDump)
             |> ignore
     
     [<Test>]
     member this.InputOperation() =
       let computer = LoadIntProgram "3,3,99,15" |> Input [28;42]
-      let result = computer |> RunToHalt
+      let result = computer |> Run
       Check.That(result |> MemoryDump).ContainsExactly(LoadIntProgram "3,3,99,28" |> MemoryDump) |> ignore
       Check.That(Seq.ofList result.input).ContainsExactly([42]) |> ignore
 
     [<Test>]
     member this.OutputOperation() =
       let computer = LoadIntProgram "4,3,99,15"
-      let result = computer |> RunToHalt
+      let result = computer |> Run
       Check.That(result |> MemoryDump).ContainsExactly(LoadIntProgram "4,3,99,15" |> MemoryDump) |> ignore
-      Check.That(computer |> Output).ContainsExactly([]) |> ignore
-      Check.That(result |> Output).ContainsExactly([15]) |> ignore
+      Check.That(computer |> Output |> Seq.ofList).ContainsExactly([]) |> ignore
+      Check.That(result |> Output |> Seq.ofList).ContainsExactly([15]) |> ignore
 
     [<Test>]
     member this.ImmediateMode() =
       let computer = LoadIntProgram "1002,4,3,4,33"
-      Check.That(computer |> RunToHalt |> MemoryDump).ContainsExactly(LoadIntProgram "1002,4,3,4,99" |> MemoryDump) |> ignore
+      Check.That(computer |> Run |> MemoryDump).ContainsExactly(LoadIntProgram "1002,4,3,4,99" |> MemoryDump) |> ignore
 
     [<TestCase("3,9,8,9,10,9,4,9,99,-1,8",7,0)>]
     [<TestCase("3,9,8,9,10,9,4,9,99,-1,8",8,1)>]
@@ -74,8 +74,8 @@ type IntcodeTests() =
     [<TestCase("3,3,1105,-1,9,1101,0,0,12,4,12,99,1",283,1)>]
     member this.ComparisonsAndJumps(program,input,expectedOutput) =
       let computer = LoadIntProgram program |> Input [input]
-      let r = computer |> Run |> List.ofSeq
-      Check.That(computer |> RunToHalt |> Output).IsEqualTo([expectedOutput]) |> ignore
+      let r = computer |> Steps |> List.ofSeq
+      Check.That(computer |> Run |> Output).IsEqualTo([expectedOutput]) |> ignore
 
     [<TestCase(-1, 999)>]
     [<TestCase(3, 999)>]
@@ -87,4 +87,4 @@ type IntcodeTests() =
       let computer = LoadIntProgram "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
         1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,
         999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99" |> Input [input]
-      Check.That(computer |> RunToHalt |> Output).IsEqualTo([expectedOutput]) |> ignore
+      Check.That(computer |> Run |> Output).IsEqualTo([expectedOutput]) |> ignore

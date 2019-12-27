@@ -35,9 +35,11 @@ let inline MemoryDump (computer:Computer<'intcode>) =
   let size = Map.count computer.program
   [0..size-1] |> Seq.map (fun i -> computer.program.[i])
 
+let inline GetInput (c:Computer<'intcode>) = c.input
 let inline Input (l:List<'intcode>) (c:Computer<'intcode>) = { c with input = c.input @ l }
+let inline HasSomeInputLeft (c:Computer<'intcode>) = (GetInput >> List.isEmpty >> not) c
 
-let inline Output (c:Computer<'intcode>) = Seq.ofList c.output
+let inline Output (c:Computer<'intcode>) = c.output
 let inline ClearOutput (c:Computer<'intcode>) = { c with output = List.empty }
 let inline AppendOutput (v:'intcode) (c:Computer<'intcode>) = { c with output=c.output @ [v] }
 
@@ -52,26 +54,27 @@ let inline RunOne (computer:Computer<'intcode>) =
                      | _ -> computer.counter+i
   //let mem (i:int) = Map.tryFind (read i) computer.program |> Option.defaultValue computer.zero
   let mem (i:int) = computer.program.[read i]
-  let popinput (c:Computer<'intcode>) = { c with input=List.tail c.input }
   let jumpif (b:bool) (c:Computer<'intcode>) = Goto (if (mem 1 |> int)<>0 = b then (mem 2 |> int) else c.counter+3) c
   let instruction = opcode % 100
   let oneElseZero (b:bool) = if b then computer.one else computer.zero
+  let popinput (c:Computer<'intcode>) = { c with input=List.tail c.input }
+  let stoprunning = {computer with running=false}
   match instruction with
   | 1 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) + (mem 2))
   | 2 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) * (mem 2))
-  | 3 -> computer |> ShiftCounter 2 |> MemoryWrite (read 1) (List.head computer.input) |> popinput
+  | 3 -> if List.isEmpty computer.input
+         then stoprunning
+         else computer |> ShiftCounter 2 |> MemoryWrite (read 1) (List.head computer.input) |> popinput
   | 4 -> computer |> ShiftCounter 2 |> AppendOutput (mem 1)
   | 5 -> computer |> jumpif true
   | 6 -> computer |> jumpif false
   | 7 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) < (mem 2) |> oneElseZero)
   | 8 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) = (mem 2) |> oneElseZero)
-  | _ -> {computer with running=false}
+  | _ -> stoprunning
   
-let inline Run (computer:Computer<'intcode>) =
+let inline Steps (computer:Computer<'intcode>) =
   Seq.unfold (fun c -> Some(c,RunOne c)) computer
   |> Seq.takeWhile (fun c -> c.running)
 
-let inline RunToHalt (computer:Computer<'intcode>) = computer |> Run |> Seq.last
-
-
+let inline Run (computer:Computer<'intcode>) :Computer<'intcode> = computer |> Steps |> Seq.last
   

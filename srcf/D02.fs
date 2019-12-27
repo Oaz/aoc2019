@@ -3,7 +3,7 @@ module Src02
 open Intcode
 
 let RunWithInputs (computer:Computer<int>) (noun:int) (verb:int) : int =
-  { computer with program = computer.program.Add(1,noun).Add(2,verb) } |> Run |> Seq.last |> MemoryDump |> Seq.head
+  { computer with program = computer.program.Add(1,noun).Add(2,verb) } |> Run |> MemoryDump |> Seq.head
 
 let FindInputsFor (outputToFind:int) (computer:Computer<int>) =
   seq {
