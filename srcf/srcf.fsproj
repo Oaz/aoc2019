@@ -6,7 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="*.fs" />
+    <Compile Include="Intcode.fs" />
+    <Compile Include="D01.fs" />
+    <Compile Include="D02.fs" />
+    <Compile Include="D06.fs" />
   </ItemGroup>
 
 </Project>
