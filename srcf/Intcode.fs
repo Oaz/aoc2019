@@ -45,9 +45,11 @@ let LoadIntProgram = LoadProgram int32
 let LoadLongProgram = LoadProgram int64
 let LoadBigProgram = LoadProgram bigint.Parse
 
+let inline Mem (i:int) (computer:Computer<'intcode>) =
+  Map.tryFind i computer.program |> Option.defaultValue computer.zero
 let inline MemoryDump (computer:Computer<'intcode>) =
-  let size = Map.count computer.program
-  [0..size-1] |> Seq.map (fun i -> computer.program.[i])
+  let maxval = Map.toSeq computer.program |> Seq.maxBy (fun (k,_) -> k) |> fst
+  [0..maxval] |> Seq.map (fun i -> Mem i computer)
 let inline FileDump (path:string) (computer:Computer<'intcode>) =
   { computer with filedump = Some path }
 
@@ -71,7 +73,7 @@ let inline Step (computerBefore:Computer<'intcode>) =
                      | 0 -> int computer.program.[computer.counter+i]
                      | 2 -> int computer.program.[computer.counter+i]+computer.relativeBase
                      | _ -> computer.counter+i
-  let mem (i:int) = Map.tryFind (read i) computer.program |> Option.defaultValue computer.zero
+  let mem (i:int) = Mem (read i) computer
   let jumpif (b:bool) (c:Computer<'intcode>) = Goto (if (mem 1 |> int)<>0 = b then (mem 2 |> int) else c.counter+3) c
   let instruction = opcode % 100
   let oneElseZero (b:bool) = if b then computer.one else computer.zero

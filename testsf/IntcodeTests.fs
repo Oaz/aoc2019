@@ -126,6 +126,13 @@ type IntcodeTests() =
     let result = computer |> FileDump "/tmp/TESTDUMP_" |> Run
     Check.That(File.ReadAllText "/tmp/TESTDUMP_0000000000").IsEqualTo("3\n3\n99\n15\n") |> ignore
     Check.That(File.ReadAllText "/tmp/TESTDUMP_0000000001").IsEqualTo("3\n3\n99\n28\n") |> ignore
+  
+  [<Test>]
+  member this.TestFileDumpWithHoles() =
+    let computer = LoadIntProgram "3,5,99,15" |> Input [28]
+    let result = computer |> FileDump "/tmp/TESTDUMP_" |> Run
+    Check.That(File.ReadAllText "/tmp/TESTDUMP_0000000000").IsEqualTo("3\n5\n99\n15\n") |> ignore
+    Check.That(File.ReadAllText "/tmp/TESTDUMP_0000000001").IsEqualTo("3\n5\n99\n15\n0\n28\n") |> ignore
 
   [<Test>]
   member this.TestLoopUntil() =
