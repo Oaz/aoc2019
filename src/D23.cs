@@ -15,40 +15,44 @@ namespace src23
 
     public IEnumerable<Packet> Run()
     {
-      LastPacket = null;
+      Packet? packetToNAT = null;
       foreach (var nic in NICs.RepeatInfinitely())
       {
-        if(LastPacket.HasValue && NetworkIsIdle)
-          NICs[0].Send(LastPacket.Value);
+        if(packetToNAT.HasValue && NetworkIsIdle)
+        {
+          yield return packetToNAT.Value;
+          NICs[0].Send(packetToNAT.Value);
+          packetToNAT = null;
+        }
         nic.RunOne();
         if (!Bus.Any())
           continue;
         var packet = Bus.Dequeue();
-        if (packet.Address == 255)
+        if (packet.Destination == 255)
         {
-          yield return packet;
-          LastPacket = packet;
+          packetToNAT = packet;
           continue;
         }
-        var targetNIC = NICs[packet.Address];
+        var targetNIC = NICs[packet.Destination];
         targetNIC.Send(packet);
       }
     }
     public bool NetworkIsIdle => NICs.All(n => n.Inputs.Count==0);
-    public Packet? LastPacket;
     public readonly List<NIC> NICs;
     public Queue<Packet> Bus;
   }
 
   public readonly struct Packet
   {
-    public Packet(int address, BigInteger x, BigInteger y)
+    public Packet(int source, int destination, BigInteger x, BigInteger y)
     {
-      Address = address;
+      Source = source;
+      Destination = destination;
       X = x;
       Y = y;
     }
-    public readonly int Address;
+    public readonly int Source;
+    public readonly int Destination;
     public readonly BigInteger X;
     public readonly BigInteger Y;
 
@@ -83,7 +87,7 @@ namespace src23
         var address = (int)OutputBuffer.Dequeue();
         var x = OutputBuffer.Dequeue();
         var y = OutputBuffer.Dequeue();
-        var packet = new Packet(address, x, y);
+        var packet = new Packet(Address, address, x, y);
         Bus.Enqueue(packet);
       }
     }
@@ -151,6 +155,7 @@ namespace src23
     }
     public AbstractIntcodeComputer RunOne()
     {
+      var counter = Counter;
       var opcode = (int)Program[Counter];
       var operation = Operations[opcode % 100];
       var modes = new int[] {(opcode/100)%10, (opcode/1000)%10, (opcode/10000)%10};
@@ -158,7 +163,7 @@ namespace src23
                   .Range(Counter + 1, operation.Length - 1)
                   .Zip(modes).Select(ChooseMode).ToArray();
       operation.Execute(this, args);
-      if (Program[Counter] == opcode)
+      if (counter == Counter && Program[Counter] == opcode)
         Counter += operation.Length;
       return this;
     }

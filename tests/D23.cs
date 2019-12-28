@@ -39,17 +39,20 @@ namespace tests23
     [Test]
     public void Part2()
     {
-      using var console = LocalTestConsole;
       var network = new Network(50, MyProgram);
-      BigInteger? previousY = null;
-      foreach (var y in network.Run().Select(p => p.Y))
+      var natReceived = new List<BigInteger>();
+      var window = 3;
+      foreach (var p in network.Run())
       {
-        console.WriteLine(previousY+" "+y);
-        if (y == previousY)
-          break;
-        previousY = y;
+        natReceived.Add(p.Y);
+        if(natReceived.Count >= window)
+        {
+          var ys = natReceived.Skip(natReceived.Count-window);
+          if(ys.Min() == ys.Max())
+            break;
+        }
       }
-      Check.That(previousY).IsEqualTo(new BigInteger(18733));
+      Check.That(natReceived.Last()).IsEqualTo(new BigInteger(18733));
     }
 
     public IEnumerable<BigInteger> MyProgram
@@ -62,7 +65,7 @@ namespace tests23
 
   public class OldTests
   {
-        [Test]
+    [Test]
     public void AddOperation()
     {
       Check.That(
@@ -164,27 +167,27 @@ namespace tests23
     [Test]
     public void CopyOfItself()
     {
-        var data = new int[] { 109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99 };
-        var program = new IntcodeComputer(data);
-        program.Run();
-        Check.That(program.Output.AsInt()).ContainsExactly(data);
+      var data = new int[] { 109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99 };
+      var program = new IntcodeComputer(data);
+      program.Run();
+      Check.That(program.Output.AsInt()).ContainsExactly(data);
     }
 
     [Test]
     public void OutputBigNumber()
     {
-        var program = new IntcodeComputer(new int[] { 1102,34915192,34915192,7,4,7,99,0 });
-        program.Run();
-        Check.That(program.Output.First()).IsEqualTo(BigInteger.Parse("1219070632396864"));
+      var program = new IntcodeComputer(new int[] { 1102, 34915192, 34915192, 7, 4, 7, 99, 0 });
+      program.Run();
+      Check.That(program.Output.First()).IsEqualTo(BigInteger.Parse("1219070632396864"));
     }
 
     [Test]
     public void OutputInsideNumber()
     {
-        var largeNumber = BigInteger.Parse("1219070632396864");
-        var program = new IntcodeComputer(new BigInteger[] { 104.AsBig(),largeNumber,99.AsBig() });
-        program.Run();
-        Check.That(program.Output.First()).IsEqualTo(largeNumber);
+      var largeNumber = BigInteger.Parse("1219070632396864");
+      var program = new IntcodeComputer(new BigInteger[] { 104.AsBig(), largeNumber, 99.AsBig() });
+      program.Run();
+      Check.That(program.Output.First()).IsEqualTo(largeNumber);
     }
   }
 }
