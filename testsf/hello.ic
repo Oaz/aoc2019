@@ -1,0 +1,26 @@
+array text[40];
+var i=0;
+while 1 {
+  var x = input();
+  text[i] = x;
+  if x == 10 {
+    break;
+  }
+  i += 1;
+}
+print(72);
+print(69);
+print(76);
+print(76);
+print(79);
+print(32);
+i=0;
+while 1 {
+  var x = text[i];
+  print(x);
+  if x == 10 {
+    break;
+  }
+  i += 1;
+}
+

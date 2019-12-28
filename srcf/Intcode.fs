@@ -91,6 +91,14 @@ let inline Steps (computer:Computer<'intcode>) =
 let inline Run (computer:Computer<'intcode>) :Computer<'intcode> =
   {computer with running=true} |> Steps |> Seq.last
  
-let inline RunIO (before:list<'intcode>*Computer<'intcode>) : list<'intcode>*Computer<'intcode> =
-  let result = Input (fst before) (snd before) |> Run
-  (Output result,ClearOutput result)
+let inline RunIO (before:'t*Computer<'intcode>) fi fo : 't*Computer<'intcode> =
+  let result = Input (fst before |> fi) (snd before) |> Run
+  (Output result |> fo,ClearOutput result)
+
+let inline RunSingleIO (before:'intcode*Computer<'intcode>) : 'intcode*Computer<'intcode> =
+  RunIO before (fun i -> [i]) List.head
+
+let inline RunASCII (before:string*Computer<int64>) : string*Computer<int64> =
+  RunIO before (List.ofSeq >> (List.map int64))
+               ((List.map char) >> Array.ofList >> System.String)
+

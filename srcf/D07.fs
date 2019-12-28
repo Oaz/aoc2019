@@ -23,10 +23,6 @@ let MakeAmplifierSeries (program:string) (len:int) =
 let InitializeWithSettings (input:seq<int>) (amp:AmplifierSeries) : AmplifierSeries =
   input |> Seq.zip amp |> Seq.map (fun (c,s) -> c |> Input [s])
 
-let RunSingleIO ((i,before):int*Computer<int>) : int*Computer<int> =
-  let (o,after) = RunIO ([i],before)
-  (List.head o, after)
-
 let ThroughAmplifiers (before:int*AmplifierSeries) : int*AmplifierSeries =
   let amp (i,a) =
     let (o,b) = RunSingleIO (i,Seq.head a)
