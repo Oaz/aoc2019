@@ -17,16 +17,32 @@ let rec AllPermutations (l:list<'a>) : list<list<'a>> = [
 
 type AmplifierSeries = seq<Computer<int>>
 
-let MakeAmplifierSeries (program:string) (len:int) = LoadIntProgram program |> Seq.replicate len
+let MakeAmplifierSeries (program:string) (len:int) =
+  LoadIntProgram program |> Seq.replicate len
 
 let InitializeWithSettings (input:seq<int>) (amp:AmplifierSeries) : AmplifierSeries =
   input |> Seq.zip amp |> Seq.map (fun (c,s) -> c |> Input [s])
 
-let ComputeOutputSignal (input:int) (amp:AmplifierSeries) : int =
-  amp |> Seq.fold (fun io -> (Input io >> Run >> Output)) [input] |> List.head
+let RunSingleIO ((i,before):int*Computer<int>) : int*Computer<int> =
+  let (o,after) = RunIO ([i],before)
+  (List.head o, after)
 
-let FindMaxOutputSignal (amp:AmplifierSeries) (input:int) (s:seq<int>) =
+let ThroughAmplifiers (before:int*AmplifierSeries) : int*AmplifierSeries =
+  let amp (i,a) =
+    let (o,b) = RunSingleIO (i,Seq.head a)
+    (o,Seq.append (Seq.tail a) [b])
+  Seq.fold (fun (i,a) -> fun _ -> amp (i,a)) before (snd before)
+
+let SimpleSignal (amp:AmplifierSeries) : int =
+  ThroughAmplifiers (0,amp) |> fst
+ 
+let FeedbackLoopSignal (amp:AmplifierSeries) =
+  loopUntil (0,amp) ThroughAmplifiers (snd >> Seq.last >> IsHalted)
+  |> Seq.last |> fst
+
+let FindMaxOutput f (s:seq<int>) (amp:AmplifierSeries) =
+  let computeSignalFor (settings:seq<int>) =
+    InitializeWithSettings settings amp |> f
   let allresults = [ for settings in (List.ofSeq s |> AllPermutations |> List.map Seq.ofList) do
-                     yield (settings,InitializeWithSettings settings amp |> ComputeOutputSignal input)]
+                     yield (settings,computeSignalFor settings)]
   allresults |> List.maxBy snd
-  

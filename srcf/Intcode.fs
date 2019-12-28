@@ -1,5 +1,11 @@
 module Intcode
 
+let loopUntil start f cond =
+  let proceed (c,x) =
+    let nextCond = cond x
+    if c then None else Some(x,(nextCond,if nextCond then x else f x))
+  Seq.unfold proceed (false,start)
+
 type Computer<'intcode
   when 'intcode : (static member op_Explicit :  'intcode -> int)
   and  'intcode : (static member (+) : 'intcode * 'intcode -> 'intcode)
@@ -8,6 +14,7 @@ type Computer<'intcode
   {
     counter: int;
     running: bool;
+    halted: bool;
     program: Map<int,'intcode>;
     input: List<'intcode>;
     output: List<'intcode>;
@@ -19,7 +26,8 @@ let inline LoadProgram (parse:string->'intcode) (s:string) =
   let code = s.Split [|','|] |> Seq.mapi (fun i -> fun s -> (i, parse s))
   {
     counter = 0;
-    running = true;
+    running = false;
+    halted = false;
     program = Map.ofSeq code;
     input = List.empty;
     output = List.empty;
@@ -46,8 +54,9 @@ let inline AppendOutput (v:'intcode) (c:Computer<'intcode>) = { c with output=c.
 let inline Goto (pc:int) (c:Computer<'intcode>) = { c with counter=pc }
 let inline ShiftCounter (delta:int) (c:Computer<'intcode>) = Goto (c.counter+delta) c
 let inline MemoryWrite (i:int) (v:'intcode) (c:Computer<'intcode>) = { c with program=c.program.Add(i,v) }
+let inline IsHalted (c:Computer<'intcode>) = c.halted
 
-let inline RunOne (computer:Computer<'intcode>) =
+let inline Step (computer:Computer<'intcode>) =
   let opcode = int computer.program.[computer.counter]
   let read (i:int) = match (opcode / (pown 10 (i+1))) % 10 with
                      | 0 -> int computer.program.[computer.counter+i]
@@ -70,11 +79,15 @@ let inline RunOne (computer:Computer<'intcode>) =
   | 6 -> computer |> jumpif false
   | 7 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) < (mem 2) |> oneElseZero)
   | 8 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) = (mem 2) |> oneElseZero)
+  | 99 -> {stoprunning with halted=true} |> ShiftCounter 1
   | _ -> stoprunning
   
 let inline Steps (computer:Computer<'intcode>) =
-  Seq.unfold (fun c -> Some(c,RunOne c)) computer
-  |> Seq.takeWhile (fun c -> c.running)
+  loopUntil computer Step (fun c -> not (c.running))
 
-let inline Run (computer:Computer<'intcode>) :Computer<'intcode> = computer |> Steps |> Seq.last
-  
+let inline Run (computer:Computer<'intcode>) :Computer<'intcode> =
+  {computer with running=true} |> Steps |> Seq.last
+ 
+let inline RunIO (before:list<'intcode>*Computer<'intcode>) : list<'intcode>*Computer<'intcode> =
+  let result = Input (fst before) (snd before) |> Run
+  (Output result,ClearOutput result)

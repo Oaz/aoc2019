@@ -1,8 +1,11 @@
 ﻿namespace Tests
 
+open System
 open System.IO
+open System.Linq
 open NUnit.Framework
 open NFluent
+open Intcode
 open Src07
 
 [<TestFixture>]
@@ -26,13 +29,33 @@ type Tests07() =
   member this.CheckSimpleAmplifierSeries(program,phaseSettings,expectedOutputSignal) =
     let settings = PhaseSettings phaseSettings 5
     let amplifiers = MakeAmplifierSeries program 5
-    Check.That(InitializeWithSettings settings amplifiers |> ComputeOutputSignal 0).IsEqualTo(expectedOutputSignal) |> ignore
-    Check.That(FindMaxOutputSignal amplifiers 0 [0;1;2;3;4] |> fst).ContainsExactly(settings) |> ignore
+    Check.That(InitializeWithSettings settings amplifiers |> SimpleSignal)
+      .IsEqualTo(expectedOutputSignal) |> ignore
+    Check.That(FindMaxOutput SimpleSignal [0;1;2;3;4] amplifiers |> fst)
+      .ContainsExactly(settings) |> ignore
 
   [<Test>]
   member this.Part1() =
     let amplifiers = MakeAmplifierSeries this.MyProgram 5
-    Check.That(FindMaxOutputSignal amplifiers 0 [0;1;2;3;4] |> snd).IsEqualTo(17790) |> ignore
+    Check.That(FindMaxOutput SimpleSignal [0;1;2;3;4] amplifiers |> snd).IsEqualTo(17790) |> ignore
 
+  [<TestCase("3,26,1001,26,-4,26,3,27,1002,27,2,27,1,27,26,
+      27,4,27,1001,28,-1,28,1005,28,6,99,0,0,5", 98765, 139629729)>]
+  [<TestCase("3,52,1001,52,-5,52,3,53,1,52,56,54,1007,54,5,55,1005,55,26,1001,54,
+      -5,54,1105,1,12,1,53,54,53,1008,54,0,55,1001,55,1,55,2,53,55,53,4,
+      53,1001,56,-1,56,1005,56,6,99,0,0,0,0,10", 97856, 18216)>]
+  member this.CheckFeedbackAmplifierSeries(program,phaseSettings,expectedOutputSignal) =
+    let settings = PhaseSettings phaseSettings 5
+    let amplifiers = MakeAmplifierSeries program 5
+    Check.That(InitializeWithSettings settings amplifiers |> FeedbackLoopSignal)
+      .IsEqualTo(expectedOutputSignal) |> ignore
+    Check.That(FindMaxOutput FeedbackLoopSignal [5;6;7;8;9] amplifiers |> fst)
+      .ContainsExactly(settings) |> ignore
+
+  [<Test>]
+  member this.Part2() =
+    let amplifiers = MakeAmplifierSeries this.MyProgram 5
+    Check.That(FindMaxOutput FeedbackLoopSignal [5;6;7;8;9] amplifiers |> snd).IsEqualTo(19384820) |> ignore
+  
   member this.MyProgram = File.ReadAllText "D07.txt"
     
