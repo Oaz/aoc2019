@@ -20,7 +20,9 @@ type Computer<'intcode
     input: List<'intcode>;
     output: List<'intcode>;
     zero: 'intcode;
-    one: 'intcode
+    one: 'intcode;
+    framecount: uint64;
+    filedump: string option
   }
 
 let inline LoadProgram (parse:string->'intcode) (s:string) =
@@ -34,7 +36,9 @@ let inline LoadProgram (parse:string->'intcode) (s:string) =
     input = List.empty;
     output = List.empty;
     zero = parse "0";
-    one = parse "1"
+    one = parse "1";
+    framecount = 0UL;
+    filedump = None
   }
 
 let LoadIntProgram = LoadProgram int32
@@ -44,6 +48,8 @@ let LoadBigProgram = LoadProgram bigint.Parse
 let inline MemoryDump (computer:Computer<'intcode>) =
   let size = Map.count computer.program
   [0..size-1] |> Seq.map (fun i -> computer.program.[i])
+let inline FileDump (path:string) (computer:Computer<'intcode>) =
+  { computer with filedump = Some path }
 
 let inline GetInput (c:Computer<'intcode>) = c.input
 let inline Input (l:List<'intcode>) (c:Computer<'intcode>) = { c with input = c.input @ l }
@@ -58,7 +64,8 @@ let inline ShiftCounter (delta:int) (c:Computer<'intcode>) = Goto (c.counter+del
 let inline MemoryWrite (i:int) (v:'intcode) (c:Computer<'intcode>) = { c with program=c.program.Add(i,v) }
 let inline IsHalted (c:Computer<'intcode>) = c.halted
 
-let inline Step (computer:Computer<'intcode>) =
+let inline Step (computerBefore:Computer<'intcode>) =
+  let computer = {computerBefore with framecount=computerBefore.framecount+1UL}
   let opcode = int computer.program.[computer.counter]
   let read (i:int) = match (opcode / (pown 10 (i+1))) % 10 with
                      | 0 -> int computer.program.[computer.counter+i]
@@ -85,8 +92,17 @@ let inline Step (computer:Computer<'intcode>) =
   | 99 -> {stoprunning with halted=true} |> ShiftCounter 1
   | _ -> stoprunning
   
+let inline ExecuteStep (computer:Computer<'intcode>) =
+  match computer.filedump with
+  | Some prefix ->
+      let filename = System.String.Format("{0}{1:D10}",prefix,computer.framecount)
+      let content = computer |> MemoryDump |> Seq.map string
+      System.IO.File.WriteAllLines(filename,content) |> ignore
+  | None -> ()
+  Step computer
+
 let inline Steps (computer:Computer<'intcode>) =
-  loopUntil computer Step (fun c -> not (c.running))
+  loopUntil computer ExecuteStep (fun c -> not (c.running))
 
 let inline Run (computer:Computer<'intcode>) :Computer<'intcode> =
   {computer with running=true} |> Steps |> Seq.last
