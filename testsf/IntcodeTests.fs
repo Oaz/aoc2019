@@ -90,6 +90,31 @@ type IntcodeTests() =
     Check.That(computer |> Run |> Output).IsEqualTo([expectedOutput]) |> ignore
 
   [<Test>]
+  member this.CopyOfItself() =
+    let computer =
+      LoadIntProgram "109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99"
+    Check.That(computer |> Run |> Output |> Seq.ofList)
+      .ContainsExactly(computer |> MemoryDump) |> ignore
+
+  [<Test>]
+  member this.OutputLongNumber() =
+    let computer = LoadLongProgram "1102,34915192,34915192,7,4,7,99,0"
+    Check.That(computer |> Run |> Output |> List.head)
+      .IsEqualTo(1219070632396864L) |> ignore
+
+  [<Test>]
+  member this.OutputInsideLongNumber() =
+    let computer = LoadLongProgram "104,1125899906842624,99"
+    Check.That(computer |> Run |> Output |> List.head)
+      .IsEqualTo(1125899906842624L) |> ignore
+
+  [<Test>]
+  member this.OutputInsideBigNumber() =
+    let computer = LoadBigProgram "104,1125899906842624597845631235698413,99"
+    Check.That(computer |> Run |> Output |> List.head)
+      .IsEqualTo(bigint.Parse("1125899906842624597845631235698413")) |> ignore
+
+  [<Test>]
   member this.TestLoopUntil() =
     Check.That(loopUntil 5 (fun x -> x+3) (fun x -> x>12))
       .ContainsExactly([5;8;11;14]) |> ignore

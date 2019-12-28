@@ -13,6 +13,7 @@ type Computer<'intcode
   > =
   {
     counter: int;
+    relativeBase: int;
     running: bool;
     halted: bool;
     program: Map<int,'intcode>;
@@ -26,6 +27,7 @@ let inline LoadProgram (parse:string->'intcode) (s:string) =
   let code = s.Split [|','|] |> Seq.mapi (fun i -> fun s -> (i, parse s))
   {
     counter = 0;
+    relativeBase = 0;
     running = false;
     halted = false;
     program = Map.ofSeq code;
@@ -60,9 +62,9 @@ let inline Step (computer:Computer<'intcode>) =
   let opcode = int computer.program.[computer.counter]
   let read (i:int) = match (opcode / (pown 10 (i+1))) % 10 with
                      | 0 -> int computer.program.[computer.counter+i]
+                     | 2 -> int computer.program.[computer.counter+i]+computer.relativeBase
                      | _ -> computer.counter+i
-  //let mem (i:int) = Map.tryFind (read i) computer.program |> Option.defaultValue computer.zero
-  let mem (i:int) = computer.program.[read i]
+  let mem (i:int) = Map.tryFind (read i) computer.program |> Option.defaultValue computer.zero
   let jumpif (b:bool) (c:Computer<'intcode>) = Goto (if (mem 1 |> int)<>0 = b then (mem 2 |> int) else c.counter+3) c
   let instruction = opcode % 100
   let oneElseZero (b:bool) = if b then computer.one else computer.zero
@@ -79,6 +81,7 @@ let inline Step (computer:Computer<'intcode>) =
   | 6 -> computer |> jumpif false
   | 7 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) < (mem 2) |> oneElseZero)
   | 8 -> computer |> ShiftCounter 4 |> MemoryWrite (read 3) ((mem 1) = (mem 2) |> oneElseZero)
+  | 9 -> {computer with relativeBase=computer.relativeBase+(mem 1|>int)} |> ShiftCounter 2
   | 99 -> {stoprunning with halted=true} |> ShiftCounter 1
   | _ -> stoprunning
   
