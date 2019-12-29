@@ -41,6 +41,7 @@ namespace src25
     {
       if(AsciiIn.Count>0)
         return AsciiIn.Dequeue();
+      Dump();
       var text = Output.ToString().Trim();
       Output.Clear();
       CurrentStatus = new Status(text);
@@ -220,6 +221,8 @@ namespace src25
     public int Counter = 0;
     public int RelativeBase = 0;
     public Dictionary<int, Operation<T>> Operations;
+    public string FileDump = null;
+    private long framecount = 0;
 
     protected void CopyTo(AbstractIntcodeComputer<T> dst)
     {
@@ -248,17 +251,32 @@ namespace src25
     }
     public AbstractIntcodeComputer<T> RunOne()
     {
-      var opcode = I(Program[Counter]);
+      Dump();
+      var counter = Counter;
+      var opcode = I(Program[counter]);
       var operation = Operations[opcode % 100];
       var modes = new int[] { (opcode / 100) % 10, (opcode / 1000) % 10, (opcode / 10000) % 10 };
       var args = Enumerable
-                  .Range(Counter + 1, operation.Length - 1)
+                  .Range(counter + 1, operation.Length - 1)
                   .Zip(modes).Select(ChooseMode).ToArray();
       operation.Execute(this, args);
-      if (I(Program[Counter]) == opcode)
+      if (Counter == counter && I(Program[counter]) == opcode)
         Counter += operation.Length;
       return this;
     }
+
+    protected void Dump()
+    {
+      if(FileDump == null)
+        return;
+      var filename = String.Format("{0}{1:D10}",FileDump,framecount);
+      var maxkey = Program.Keys.Max();
+      var memory = Enumerable.Range(0,maxkey+1).Select(i => ReadAt(i).ToString());
+      var registers = new string[] {"PC="+Counter.ToString(),"RB="+RelativeBase.ToString()};
+      File.WriteAllLines(filename,registers.Concat(memory));
+      framecount++;
+    }
+
     private int ChooseMode((int, int) x) =>
       x.Item2 == 1 ? x.Item1 : I(Program[x.Item1]) + (x.Item2 == 0 ? 0 : RelativeBase);
   }

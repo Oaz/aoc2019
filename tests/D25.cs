@@ -109,7 +109,7 @@ namespace tests25
       Check.That(status.Title).IsEqualTo("Pressure-Sensitive Floor");
       var expected = "A loud, robotic voice says \"Analysis complete! You may proceed.\" and you enter the cockpit.\n"
       + "Santa notices your small droid, looks puzzled for a moment, realizes what has happened, and radios your ship directly.\n"
-      + "\"Oh, hello! You should be able to get in by typing 0 on the keypad at the main airlock.\"";
+      + "\"Oh, hello! You should be able to get in by typing 134349952 on the keypad at the main airlock.\"";
       Check.That(status.Description).IsEqualTo(expected);
     }
 
