@@ -98,8 +98,9 @@ let inline ExecuteStep (computer:Computer<'intcode>) =
   match computer.filedump with
   | Some prefix ->
       let filename = System.String.Format("{0}{1:D10}",prefix,computer.framecount)
-      let content = computer |> MemoryDump |> Seq.map string
-      System.IO.File.WriteAllLines(filename,content) |> ignore
+      let memory = computer |> MemoryDump |> Seq.map string
+      let registers = ["PC="+(string computer.counter);"RB="+(string computer.relativeBase)] |> Seq.ofList
+      System.IO.File.WriteAllLines(filename,Seq.concat [registers;memory]) |> ignore
   | None -> ()
   Step computer
 
