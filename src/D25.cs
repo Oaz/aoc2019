@@ -252,16 +252,14 @@ namespace src25
     public AbstractIntcodeComputer<T> RunOne()
     {
       Dump();
-      var counter = Counter;
-      var opcode = I(Program[counter]);
+      var opcode = I(Program[Counter]);
       var operation = Operations[opcode % 100];
       var modes = new int[] { (opcode / 100) % 10, (opcode / 1000) % 10, (opcode / 10000) % 10 };
       var args = Enumerable
-                  .Range(counter + 1, operation.Length - 1)
+                  .Range(Counter + 1, operation.Length - 1)
                   .Zip(modes).Select(ChooseMode).ToArray();
+      Counter += operation.Length;
       operation.Execute(this, args);
-      if (Counter == counter && I(Program[counter]) == opcode)
-        Counter += operation.Length;
       return this;
     }
 

@@ -155,16 +155,14 @@ namespace src23
     }
     public AbstractIntcodeComputer RunOne()
     {
-      var counter = Counter;
       var opcode = (int)Program[Counter];
       var operation = Operations[opcode % 100];
       var modes = new int[] {(opcode/100)%10, (opcode/1000)%10, (opcode/10000)%10};
       var args = Enumerable
                   .Range(Counter + 1, operation.Length - 1)
                   .Zip(modes).Select(ChooseMode).ToArray();
+      Counter += operation.Length;
       operation.Execute(this, args);
-      if (counter == Counter && Program[Counter] == opcode)
-        Counter += operation.Length;
       return this;
     }
     private BigInteger ChooseMode((int, int) x) =>
